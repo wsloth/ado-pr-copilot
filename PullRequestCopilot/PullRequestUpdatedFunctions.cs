@@ -11,6 +11,7 @@ using System;
 using System.Collections.Generic;
 using System.Net.Http;
 using System.Web.Http;
+using System.Net.Http.Headers;
 
 namespace PullRequestCopilot
 {
@@ -44,16 +45,26 @@ namespace PullRequestCopilot
             // send post request to createThreadUrl
             try
             {
-                var client = new HttpClient();
+                using var client = new HttpClient();
+                client.DefaultRequestHeaders.Accept.Add(
+                    new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
+
+                client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic",
+                    Convert.ToBase64String(
+                        System.Text.ASCIIEncoding.ASCII.GetBytes(
+                            string.Format("{0}:{1}", "", adoPAT))));
+
                 var values = new Dictionary<string, string>
                   {
                       { "content", "Hello World from Azure Functions!" },
                   };
 
                 var content = new FormUrlEncodedContent(values);
-                content.Headers.TryAddWithoutValidation("Authorization", $"Basic {adoPAT}");
 
-                var response = await client.PostAsync(createThreadUrl, content);
+                using var response = await client.PostAsync(
+                            createThreadUrl, content);
+
+                response.EnsureSuccessStatusCode();
 
                 var responseString = await response.Content.ReadAsStringAsync();
                 log.LogInformation("PullRequestUpdated Azure DevOps Response: {responseBody}", responseString);
